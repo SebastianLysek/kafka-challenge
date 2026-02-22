@@ -1,0 +1,137 @@
+version: "3.9"
+
+networks:
+  infra-net:
+    name: kafka-infra-net
+    driver: bridge
+
+volumes:
+  kafka_data:
+
+services:
+  kafka:
+    image: apache/kafka:4.2.0
+    container_name: kafka
+    profiles: ["infra", "full"]
+    networks: [infra-net]
+
+    ports:
+      - "9092:9092"     # HOST access (IntelliJ): localhost:9092
+      - "29092:29092"   # DOCKER access (other containers): kafka:29092
+
+    environment:
+      # -------- KRaft "combined mode" (broker + controller in one node) --------
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+
+      # -------- Dual listeners (HOST + DOCKER) + controller listener --------
+      # "listeners" = what Kafka binds to inside the container
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
+      # "advertised.listeners" = what Kafka tells clients to connect to
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT_INTERNAL"
+
+      # -------- Single-node dev-friendly defaults --------
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    profiles: ["infra", "full"]
+    networks: [infra-net]
+    depends_on: [kafka]
+    ports:
+      - "8085:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    profiles: ["infra", "full"]
+    networks: [infra-net]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # ---------------- FULL profile: run services in Docker ----------------
+
+  orders:
+    profiles: ["full"]
+    build:
+      context: ./orders
+    image: orders:dev
+    container_name: orders
+    networks:
+      - infra-net
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+
+  inventory:
+    profiles: ["full"]
+    build:
+      context: ./inventory
+    image: inventory:dev
+    container_name: inventory
+    networks:
+      - infra-net
+    depends_on:
+      - kafka
+    ports:
+      - "8082:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+
+  shipment:
+    profiles: ["full"]
+    build:
+      context: ./shipment
+    image: shipment:dev
+    container_name: shipment
+    networks:
+      - infra-net
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+
+  customer-relations:
+    profiles: ["full"]
+    build:
+      context: ./customer-relations
+    image: customer-relations:dev
+    container_name: customer-relations
+    networks:
+      - infra-net
+    depends_on:
+      - kafka
+      - mailhog
+    ports:
+      - "8084:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_MAIL_HOST=mailhog
+      - SPRING_MAIL_PORT=1025
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false
