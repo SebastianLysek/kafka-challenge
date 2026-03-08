@@ -15,12 +15,17 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.5.9</version>
-    <relativePath/> <!-- lookup parent from repository -->
+    <relativePath/>
   </parent>
 
   <properties>
     <java.version>21</java.version>
-    <!-- Optional, but nice for consistent encoding -->
+    <spring-boot.version>3.5.9</spring-boot.version>
+    <spring-kafka.version>3.3.11</spring-kafka.version>
+    <jackson-databind.version>2.19.4</jackson-databind.version>
+    <h2.version>2.3.232</h2.version>
+    <lombok.version>1.18.42</lombok.version>
+    <mockito.version>5.17.0</mockito.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -39,6 +44,7 @@
         <plugin>
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>
