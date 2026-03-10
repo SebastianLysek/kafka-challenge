@@ -3,6 +3,9 @@ package com.haeger.kafkachallenge.common.events;
 public class EventTypes {
     private EventTypes(){}
 
+    public static final String PRODUCT_CATALOG_SNAPSHOT = "PRODUCT_CATALOG_SNAPSHOT";
+    public static final String PRODUCT_UPSERTED = "PRODUCT_UPSERTED";
+
     public static final String ORDER_CREATED = "ORDER_CREATED";
     public static final String ORDER_CONFIRMED = "ORDER_CONFIRMED";
     public static final String ORDER_DECLINED = "ORDER_DECLINED";

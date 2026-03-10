@@ -37,6 +37,11 @@ public class ProductService {
         return productRepository.findBySku(sku);
     }
 
+    @Transactional(readOnly = true)
+    public List<Product> findAll() {
+        return productRepository.findAll();
+    }
+
     @Transactional
     public Product save(Product product) {
         return productRepository.save(product);
