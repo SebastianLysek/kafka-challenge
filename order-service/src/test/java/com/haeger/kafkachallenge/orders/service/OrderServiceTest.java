@@ -18,6 +18,7 @@ import com.haeger.kafkachallenge.orders.entity.Order;
 import com.haeger.kafkachallenge.orders.entity.OrderItem;
 import com.haeger.kafkachallenge.orders.entity.ProductCatalogEntry;
 import com.haeger.kafkachallenge.orders.repository.OrderRepository;
+import com.haeger.kafkachallenge.orders.util.mapper.PojoMapper;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -42,6 +44,9 @@ class OrderServiceTest {
 
     @Mock
     private OutboxService outboxService;
+
+    @Spy
+    private PojoMapper pojoMapper;
 
     @InjectMocks
     private OrderService orderService;

@@ -54,8 +54,7 @@ public class ProductCatalogEventListener {
     }
 
     private void handleSnapshot(JsonNode payload) throws JsonProcessingException {
-        ProductCatalogSnapshotPayload snapshotPayload =
-            objectMapper.treeToValue(payload, ProductCatalogSnapshotPayload.class);
+        ProductCatalogSnapshotPayload snapshotPayload = objectMapper.treeToValue(payload, ProductCatalogSnapshotPayload.class);
         productCatalogProjectionService.replaceCatalog(snapshotPayload.getProducts());
         LOG.info("Applied {} with {} products", EventTypes.PRODUCT_CATALOG_SNAPSHOT, snapshotPayload.getProducts().size());
     }

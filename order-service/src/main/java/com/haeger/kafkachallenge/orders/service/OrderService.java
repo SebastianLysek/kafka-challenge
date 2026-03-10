@@ -10,9 +10,9 @@ import com.haeger.kafkachallenge.orders.entity.Order;
 import com.haeger.kafkachallenge.orders.entity.OrderItem;
 import com.haeger.kafkachallenge.orders.entity.ProductCatalogEntry;
 import com.haeger.kafkachallenge.orders.repository.OrderRepository;
+import com.haeger.kafkachallenge.orders.util.mapper.PojoMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -28,6 +28,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductCatalogProjectionService productCatalogProjectionService;
     private final OutboxService outboxService;
+    private final PojoMapper pojoMapper;
 
     @Transactional
     public OrderDto createOrder(OrderDto dto) {
@@ -38,17 +39,12 @@ public class OrderService {
             .collect(java.util.stream.Collectors.toMap(ProductCatalogEntry::getProductId, Function.identity()));
         Instant now = Instant.now();
 
-        Order order = Order.builder()
-            .customerId(dto.getCustomerId())
-            .customerEmail(dto.getCustomerEmail())
-            .customerFullName(dto.getCustomerFullName())
-            .status(OrderStatus.CREATED)
-            .currency(dto.getCurrency())
-            .notes(dto.getNotes())
-            .createdAt(now)
-            .updatedAt(now)
-            .total(BigDecimal.ZERO)
-            .build();
+        Order order = new Order();
+        pojoMapper.applyOrderWrite(dto, order);
+        order.setStatus(OrderStatus.CREATED);
+        order.setCreatedAt(now);
+        order.setUpdatedAt(now);
+        order.setTotal(BigDecimal.ZERO);
 
         BigDecimal total = BigDecimal.ZERO;
         for (OrderItemDto itemDto : dto.getItems()) {
@@ -62,19 +58,17 @@ public class OrderService {
             BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity()));
             total = total.add(lineTotal);
 
-            order.addItem(OrderItem.builder()
-                .productId(product.getProductId())
-                .productSku(product.getSku())
-                .productName(product.getName())
-                .unitPrice(product.getPrice())
-                .quantity(itemDto.getQuantity())
-                .lineTotal(lineTotal)
-                .build());
+            OrderItem orderItem = pojoMapper.toOrderItemEntity(itemDto);
+            orderItem.setProductSku(product.getSku());
+            orderItem.setProductName(product.getName());
+            orderItem.setUnitPrice(product.getPrice());
+            orderItem.setLineTotal(lineTotal);
+            order.addItem(orderItem);
         }
         order.setTotal(total);
 
         Order savedOrder = orderRepository.save(order);
-        OrderDto response = toDto(savedOrder);
+        OrderDto response = pojoMapper.toOrderDto(savedOrder);
         outboxService.enqueue(
             KafkaTopics.ORDERS,
             IntegrationEvent.of(EventTypes.ORDER_CREATED, savedOrder.getId().toString(), response)
@@ -85,45 +79,14 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderDto> listOrders() {
         return orderRepository.findAll().stream()
-            .map(this::toDto)
+            .map(pojoMapper::toOrderDto)
             .toList();
     }
 
     @Transactional(readOnly = true)
     public List<OrderDto> listOrdersByCustomerId(Long customerId) {
         return orderRepository.findAllByCustomerId(customerId).stream()
-            .map(this::toDto)
+            .map(pojoMapper::toOrderDto)
             .toList();
-    }
-
-    private OrderDto toDto(Order order) {
-        return OrderDto.builder()
-            .id(order.getId())
-            .customerId(order.getCustomerId())
-            .customerEmail(order.getCustomerEmail())
-            .customerFullName(order.getCustomerFullName())
-            .status(order.getStatus())
-            .currency(order.getCurrency())
-            .total(order.getTotal())
-            .notes(order.getNotes())
-            .createdAt(order.getCreatedAt())
-            .updatedAt(order.getUpdatedAt())
-            .items(order.getItems().stream()
-                .map(this::toItemDto)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)))
-            .build();
-    }
-
-    private OrderItemDto toItemDto(OrderItem item) {
-        return OrderItemDto.builder()
-            .id(item.getId())
-            .orderId(item.getOrder().getId())
-            .productId(item.getProductId())
-            .productSku(item.getProductSku())
-            .productName(item.getProductName())
-            .unitPrice(item.getUnitPrice())
-            .quantity(item.getQuantity())
-            .lineTotal(item.getLineTotal())
-            .build();
     }
 }
