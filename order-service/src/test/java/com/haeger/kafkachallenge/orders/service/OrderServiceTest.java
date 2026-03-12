@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -149,6 +150,38 @@ class OrderServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getCustomerId()).isEqualTo(99L);
         assertThat(result.getFirst().getId()).isEqualTo(1002L);
+    }
+
+    @Test
+    void confirmOrderUpdatesStatusAndEnqueuesOrderConfirmed() {
+        Order order = sampleOrder(1003L, 42L);
+        Instant originalUpdatedAt = order.getUpdatedAt();
+        when(orderRepository.findById(1003L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderService.confirmOrder(1003L);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(order.getUpdatedAt()).isAfter(originalUpdatedAt);
+
+        ArgumentCaptor<IntegrationEvent> eventCaptor = ArgumentCaptor.forClass(IntegrationEvent.class);
+        verify(outboxService).enqueue(eq(KafkaTopics.ORDERS), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getType()).isEqualTo(EventTypes.ORDER_CONFIRMED);
+    }
+
+    @Test
+    void declineOrderUpdatesStatusAndEnqueuesOrderDeclined() {
+        Order order = sampleOrder(1004L, 42L);
+        when(orderRepository.findById(1004L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderService.declineOrder(1004L);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.DECLINED);
+
+        ArgumentCaptor<IntegrationEvent> eventCaptor = ArgumentCaptor.forClass(IntegrationEvent.class);
+        verify(outboxService).enqueue(eq(KafkaTopics.ORDERS), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getType()).isEqualTo(EventTypes.ORDER_DECLINED);
     }
 
     private Order sampleOrder(Long orderId, Long customerId) {

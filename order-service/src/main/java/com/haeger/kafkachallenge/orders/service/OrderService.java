@@ -6,6 +6,8 @@ import com.haeger.kafkachallenge.common.dto.OrderStatus;
 import com.haeger.kafkachallenge.common.events.EventTypes;
 import com.haeger.kafkachallenge.common.events.IntegrationEvent;
 import com.haeger.kafkachallenge.common.events.KafkaTopics;
+import com.haeger.kafkachallenge.common.events.OrderCreatedItemPayload;
+import com.haeger.kafkachallenge.common.events.OrderCreatedPayload;
 import com.haeger.kafkachallenge.orders.entity.Order;
 import com.haeger.kafkachallenge.orders.entity.OrderItem;
 import com.haeger.kafkachallenge.orders.entity.ProductCatalogEntry;
@@ -17,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+    private static final Logger LOG = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderRepository orderRepository;
     private final ProductCatalogProjectionService productCatalogProjectionService;
     private final OutboxService outboxService;
@@ -71,7 +77,7 @@ public class OrderService {
         OrderDto response = pojoMapper.toOrderDto(savedOrder);
         outboxService.enqueue(
             KafkaTopics.ORDERS,
-            IntegrationEvent.of(EventTypes.ORDER_CREATED, savedOrder.getId().toString(), response)
+            IntegrationEvent.of(EventTypes.ORDER_CREATED, savedOrder.getId().toString(), toOrderCreatedPayload(savedOrder))
         );
         return response;
     }
@@ -88,5 +94,64 @@ public class OrderService {
         return orderRepository.findAllByCustomerId(customerId).stream()
             .map(pojoMapper::toOrderDto)
             .toList();
+    }
+
+    @Transactional
+    public void confirmOrder(Long orderId) {
+        transitionOrderStatus(orderId, OrderStatus.CONFIRMED, EventTypes.ORDER_CONFIRMED);
+    }
+
+    @Transactional
+    public void declineOrder(Long orderId) {
+        transitionOrderStatus(orderId, OrderStatus.DECLINED, EventTypes.ORDER_DECLINED);
+    }
+
+    private void transitionOrderStatus(Long orderId, OrderStatus targetStatus, String resultingEventType) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new IllegalStateException("Order %d not found".formatted(orderId)));
+
+        if (order.getStatus() == targetStatus) {
+            LOG.info("Order {} already has status {}, skipping", orderId, targetStatus);
+            return;
+        }
+        if (order.getStatus() != OrderStatus.CREATED) {
+            LOG.warn("Ignoring transition of order {} from {} to {}", orderId, order.getStatus(), targetStatus);
+            return;
+        }
+
+        order.setStatus(targetStatus);
+        order.setUpdatedAt(Instant.now());
+
+        Order savedOrder = orderRepository.save(order);
+        OrderDto eventPayload = pojoMapper.toOrderDto(savedOrder);
+        outboxService.enqueue(
+            KafkaTopics.ORDERS,
+            IntegrationEvent.of(resultingEventType, savedOrder.getId().toString(), eventPayload)
+        );
+    }
+
+    private OrderCreatedPayload toOrderCreatedPayload(Order order) {
+        return OrderCreatedPayload.builder()
+            .orderId(order.getId())
+            .customerId(order.getCustomerId())
+            .customerEmail(order.getCustomerEmail())
+            .customerFullName(order.getCustomerFullName())
+            .status(order.getStatus())
+            .currency(order.getCurrency())
+            .total(order.getTotal())
+            .notes(order.getNotes())
+            .createdAt(order.getCreatedAt())
+            .updatedAt(order.getUpdatedAt())
+            .items(order.getItems().stream()
+                .map(item -> OrderCreatedItemPayload.builder()
+                    .productId(item.getProductId())
+                    .productSku(item.getProductSku())
+                    .productName(item.getProductName())
+                    .unitPrice(item.getUnitPrice())
+                    .quantity(item.getQuantity())
+                    .lineTotal(item.getLineTotal())
+                    .build())
+                .toList())
+            .build();
     }
 }
