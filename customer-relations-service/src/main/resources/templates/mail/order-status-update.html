@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${mailTitle}">Order status update</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f7fb;color:#1f2937;font-family:Arial,sans-serif;">
+<span
+    th:text="${previewText}"
+    style="display:none;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">
+    Order update
+</span>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f4f7fb;">
+    <tr>
+        <td align="center" style="padding:24px 12px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+                   style="max-width:720px;background-color:#ffffff;border-radius:20px;overflow:hidden;">
+                <tr>
+                    <td th:style="'background:linear-gradient(135deg,' + ${accentColor} + ',#111827);padding:28px 32px;color:#ffffff;'">
+                        <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;opacity:0.85;">
+                            Kafka Challenge Store
+                        </p>
+                        <h1 th:text="${mailTitle}" style="margin:0;font-size:30px;line-height:1.2;font-weight:700;">
+                            Order update
+                        </h1>
+                        <p th:text="${mailSummary}" style="margin:14px 0 0 0;font-size:16px;line-height:1.6;max-width:520px;">
+                            Summary
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:28px 32px 8px 32px;">
+                        <p style="margin:0 0 12px 0;font-size:16px;line-height:1.6;">
+                            Hello <strong th:text="${order.customerFullName}">Customer</strong>,
+                        </p>
+                        <p th:text="${previewText}" style="margin:0 0 24px 0;font-size:15px;line-height:1.6;color:#4b5563;">
+                            Preview
+                        </p>
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+                               style="border:1px solid #e5e7eb;border-radius:16px;background-color:#f9fafb;">
+                            <tr>
+                                <td style="padding:20px 24px;">
+                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                        <tr>
+                                            <td style="padding:0 0 8px 0;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.8px;">
+                                                Current order status
+                                            </td>
+                                            <td align="right" style="padding:0 0 8px 0;">
+                                                <span th:text="${statusLabel}"
+                                                      th:style="'display:inline-block;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#ffffff;background-color:' + ${accentColor}">
+                                                    Status
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0;font-size:14px;color:#6b7280;">Order ID</td>
+                                            <td align="right" th:text="${order.orderId}" style="padding:8px 0;font-size:14px;font-weight:600;">
+                                                1001
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0;font-size:14px;color:#6b7280;">Status on record</td>
+                                            <td align="right" th:text="${order.status}" style="padding:8px 0;font-size:14px;font-weight:600;">
+                                                Confirmed
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0;font-size:14px;color:#6b7280;">Created at</td>
+                                            <td align="right" th:text="${order.createdAt}" style="padding:8px 0;font-size:14px;font-weight:600;">
+                                                2026-03-13 20:00:00 CET
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0;font-size:14px;color:#6b7280;">Last updated</td>
+                                            <td align="right" th:text="${order.updatedAt}" style="padding:8px 0;font-size:14px;font-weight:600;">
+                                                2026-03-13 20:05:00 CET
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0;font-size:14px;color:#6b7280;">Order total</td>
+                                            <td align="right" th:text="${order.total}" style="padding:8px 0;font-size:14px;font-weight:700;">
+                                                EUR 123.45
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 32px 0 32px;">
+                        <h2 style="margin:0 0 14px 0;font-size:20px;color:#111827;">Items in your order</h2>
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+                               style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+                            <thead>
+                            <tr style="background-color:#eff6ff;">
+                                <th align="left" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:#374151;">Item</th>
+                                <th align="left" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:#374151;">SKU</th>
+                                <th align="right" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:#374151;">Qty</th>
+                                <th align="right" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:#374151;">Unit price</th>
+                                <th align="right" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:#374151;">Line total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="item : ${order.items}" style="border-top:1px solid #e5e7eb;">
+                                <td th:text="${item.productName}" style="padding:14px 16px;font-size:14px;color:#111827;">Product</td>
+                                <td th:text="${item.productSku}" style="padding:14px 16px;font-size:13px;color:#4b5563;">SKU</td>
+                                <td align="right" th:text="${item.quantity}" style="padding:14px 16px;font-size:14px;color:#111827;">1</td>
+                                <td align="right" th:text="${item.unitPrice}" style="padding:14px 16px;font-size:14px;color:#111827;">EUR 99.99</td>
+                                <td align="right" th:text="${item.lineTotal}" style="padding:14px 16px;font-size:14px;font-weight:600;color:#111827;">EUR 99.99</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr th:if="${order.hasNotes}">
+                    <td style="padding:24px 32px 0 32px;">
+                        <h2 style="margin:0 0 10px 0;font-size:20px;color:#111827;">Notes</h2>
+                        <p th:text="${order.notes}"
+                           style="margin:0;padding:16px 18px;background-color:#fff7ed;border:1px solid #fed7aa;border-radius:14px;font-size:14px;line-height:1.7;color:#7c2d12;">
+                            Customer note
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:28px 32px 32px 32px;">
+                        <p style="margin:0;font-size:13px;line-height:1.7;color:#6b7280;">
+                            This message was generated automatically by the customer-relations service.
+                            If you are inspecting the challenge locally, you can review the delivered emails in MailHog.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

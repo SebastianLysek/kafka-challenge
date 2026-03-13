@@ -13,11 +13,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProcessedEventService {
     private final ProcessedEventRepository processedEventRepository;
 
+    /**
+     * Checks if an event with the specified ID has been processed.
+     *
+     * @param eventId the unique identifier of the event to check
+     * @return {@code true} if the event has been processed, {@code false} otherwise
+     */
     @Transactional(readOnly = true)
     public boolean hasProcessed(String eventId) {
         return processedEventRepository.existsById(eventId);
     }
 
+    /**
+     * Marks the specified integration event as processed by saving its details to the repository.
+     *
+     * @param event the integration event to be marked as processed
+     */
     @Transactional
     public void markProcessed(IntegrationEvent<?> event) {
         processedEventRepository.save(ProcessedEvent.builder()
