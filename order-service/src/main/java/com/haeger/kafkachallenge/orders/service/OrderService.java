@@ -36,6 +36,17 @@ public class OrderService {
     private final OutboxService outboxService;
     private final PojoMapper pojoMapper;
 
+    /**
+     * Creates a new order based on the provided OrderDto. The method processes the order items,
+     * calculates the total cost, validates the product data, and persists the order. It also
+     * enqueues an event to notify about the order creation.
+     *
+     * @param dto the data transfer object containing the details of the order to be created,
+     *            including items, quantities, and other metadata
+     * @return an OrderDto representing the created order, including its calculated total,
+     *         current status, and additional metadata
+     * @throws ResponseStatusException if any of the productIds in the order items cannot be found
+     */
     @Transactional
     public OrderDto createOrder(OrderDto dto) {
         List<Long> productIds = dto.getItems().stream()
@@ -82,6 +93,11 @@ public class OrderService {
         return response;
     }
 
+    /**
+     * Retrieves a list of all orders and maps them to OrderDto objects.
+     *
+     * @return a list of OrderDto representing all orders in the repository
+     */
     @Transactional(readOnly = true)
     public List<OrderDto> listOrders() {
         return orderRepository.findAll().stream()
@@ -89,6 +105,13 @@ public class OrderService {
             .toList();
     }
 
+    /**
+     * Retrieves a list of orders associated with the given customer ID.
+     * This method is marked as read-only transactional.
+     *
+     * @param customerId the ID of the customer whose orders are to be retrieved
+     * @return a list of OrderDto objects representing the customer's orders
+     */
     @Transactional(readOnly = true)
     public List<OrderDto> listOrdersByCustomerId(Long customerId) {
         return orderRepository.findAllByCustomerId(customerId).stream()
@@ -96,40 +119,111 @@ public class OrderService {
             .toList();
     }
 
+    /**
+     * Confirms an order by transitioning its status from CREATED to CONFIRMED
+     * and enqueues an integration event for the confirmation.
+     *
+     * @param orderId the unique identifier of the order to be confirmed
+     */
     @Transactional
     public void confirmOrder(Long orderId) {
-        transitionOrderStatus(orderId, OrderStatus.CONFIRMED, EventTypes.ORDER_CONFIRMED);
+        Order savedOrder = transitionOrderStatus(orderId, OrderStatus.CREATED, OrderStatus.CONFIRMED);
+        if (savedOrder == null) {
+            return;
+        }
+
+        outboxService.enqueue(
+            KafkaTopics.ORDERS,
+            IntegrationEvent.of(
+                EventTypes.ORDER_CONFIRMED,
+                savedOrder.getId().toString(),
+                toOrderCreatedPayload(savedOrder)
+            )
+        );
     }
 
+    /**
+     * Declines an order by updating its status to 'DECLINED' and enqueues
+     * an integration event to notify other services about the status change.
+     *
+     * @param orderId the unique identifier of the order to be declined
+     */
     @Transactional
     public void declineOrder(Long orderId) {
-        transitionOrderStatus(orderId, OrderStatus.DECLINED, EventTypes.ORDER_DECLINED);
+        Order savedOrder = transitionOrderStatus(orderId, OrderStatus.CREATED, OrderStatus.DECLINED);
+        if (savedOrder == null) {
+            return;
+        }
+
+        outboxService.enqueue(
+            KafkaTopics.ORDERS,
+            IntegrationEvent.of(
+                EventTypes.ORDER_DECLINED,
+                savedOrder.getId().toString(),
+                toOrderCreatedPayload(savedOrder)
+            )
+        );
     }
 
-    private void transitionOrderStatus(Long orderId, OrderStatus targetStatus, String resultingEventType) {
+    /**
+     * Initiates the shipment preparation process for the specified order.
+     * Changes the status of the order from "CONFIRMED" to "PREP_STARTED".
+     *
+     * @param orderId the unique identifier of the order that will enter the shipment preparation phase
+     */
+    @Transactional
+    public void startShipmentPreparation(Long orderId) {
+        transitionOrderStatus(orderId, OrderStatus.CONFIRMED, OrderStatus.PREP_STARTED);
+    }
+
+    /**
+     * Marks the specified order as shipped by transitioning its status from
+     * PREP_STARTED to SHIPPED.
+     *
+     * @param orderId the unique identifier of the order to be marked as shipped
+     */
+    @Transactional
+    public void markShipped(Long orderId) {
+        transitionOrderStatus(orderId, OrderStatus.PREP_STARTED, OrderStatus.SHIPPED);
+    }
+
+    /**
+     * Transitions the status of an order to a target status if the current status matches the expected status.
+     *
+     * @param orderId The unique identifier of the order to be updated.
+     * @param expectedCurrentStatus The expected current status of the order. If the actual status of the order
+     *        does not match this status, the transition will not occur.
+     * @param targetStatus The target status to which the order's status should be updated.
+     * @return The updated {@code Order} object if the transition is successful. Returns {@code null} if the
+     *         order's current status does not match the expected status or if the target status is the same as
+     *         the current status.
+     * @throws IllegalStateException If the order with the given {@code orderId} is not found.
+     */
+    private Order transitionOrderStatus(Long orderId, OrderStatus expectedCurrentStatus, OrderStatus targetStatus) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new IllegalStateException("Order %d not found".formatted(orderId)));
 
         if (order.getStatus() == targetStatus) {
             LOG.info("Order {} already has status {}, skipping", orderId, targetStatus);
-            return;
+            return null;
         }
-        if (order.getStatus() != OrderStatus.CREATED) {
+        if (order.getStatus() != expectedCurrentStatus) {
             LOG.warn("Ignoring transition of order {} from {} to {}", orderId, order.getStatus(), targetStatus);
-            return;
+            return null;
         }
 
         order.setStatus(targetStatus);
         order.setUpdatedAt(Instant.now());
 
-        Order savedOrder = orderRepository.save(order);
-        OrderDto eventPayload = pojoMapper.toOrderDto(savedOrder);
-        outboxService.enqueue(
-            KafkaTopics.ORDERS,
-            IntegrationEvent.of(resultingEventType, savedOrder.getId().toString(), eventPayload)
-        );
+        return orderRepository.save(order);
     }
 
+    /**
+     * Converts an Order object to an OrderCreatedPayload object.
+     *
+     * @param order the Order object to be converted
+     * @return an OrderCreatedPayload object containing the corresponding data from the given Order object
+     */
     private OrderCreatedPayload toOrderCreatedPayload(Order order) {
         return OrderCreatedPayload.builder()
             .orderId(order.getId())

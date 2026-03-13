@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.haeger.kafkachallenge.common.events.EventTypes;
 import com.haeger.kafkachallenge.common.events.IntegrationEvent;
 import com.haeger.kafkachallenge.common.events.KafkaTopics;
+import com.haeger.kafkachallenge.common.events.OrderCreatedPayload;
 import com.haeger.kafkachallenge.common.events.OrderFulfillmentCheckResultPayload;
 import com.haeger.kafkachallenge.orders.service.OrderService;
 import com.haeger.kafkachallenge.orders.service.ProcessedEventService;
@@ -44,6 +45,8 @@ public class OrderFulfillmentEventListener {
             switch (event.getType()) {
                 case EventTypes.ORDER_FULFILLMENT_CHECK_SUCCEEDED -> handleSucceeded(event.getPayload());
                 case EventTypes.ORDER_FULFILLMENT_CHECK_FAILED -> handleFailed(event.getPayload());
+                case EventTypes.SHIPMENT_PREPARATION_STARTED -> handleShipmentPreparationStarted(event.getPayload());
+                case EventTypes.ORDER_SHIPPED -> handleOrderShipped(event.getPayload());
                 default -> LOG.debug("Ignoring unsupported order event type {}", event.getType());
             }
             processedEventService.markProcessed(event);
@@ -62,5 +65,17 @@ public class OrderFulfillmentEventListener {
         OrderFulfillmentCheckResultPayload result = objectMapper.treeToValue(payload, OrderFulfillmentCheckResultPayload.class);
         orderService.declineOrder(result.getOrderId());
         LOG.info("Processed {} for order {}", EventTypes.ORDER_FULFILLMENT_CHECK_FAILED, result.getOrderId());
+    }
+
+    private void handleShipmentPreparationStarted(JsonNode payload) throws JsonProcessingException {
+        OrderCreatedPayload order = objectMapper.treeToValue(payload, OrderCreatedPayload.class);
+        orderService.startShipmentPreparation(order.getOrderId());
+        LOG.info("Processed {} for order {}", EventTypes.SHIPMENT_PREPARATION_STARTED, order.getOrderId());
+    }
+
+    private void handleOrderShipped(JsonNode payload) throws JsonProcessingException {
+        OrderCreatedPayload order = objectMapper.treeToValue(payload, OrderCreatedPayload.class);
+        orderService.markShipped(order.getOrderId());
+        LOG.info("Processed {} for order {}", EventTypes.ORDER_SHIPPED, order.getOrderId());
     }
 }

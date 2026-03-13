@@ -184,6 +184,34 @@ class OrderServiceTest {
         assertThat(eventCaptor.getValue().getType()).isEqualTo(EventTypes.ORDER_DECLINED);
     }
 
+    @Test
+    void startShipmentPreparationUpdatesStatusWithoutPublishingEvent() {
+        Order order = sampleOrder(1005L, 42L);
+        order.setStatus(OrderStatus.CONFIRMED);
+        Instant originalUpdatedAt = order.getUpdatedAt();
+        when(orderRepository.findById(1005L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderService.startShipmentPreparation(1005L);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PREP_STARTED);
+        assertThat(order.getUpdatedAt()).isAfter(originalUpdatedAt);
+        verify(outboxService, never()).enqueue(any(), any());
+    }
+
+    @Test
+    void markShippedUpdatesStatusWithoutPublishingEvent() {
+        Order order = sampleOrder(1006L, 42L);
+        order.setStatus(OrderStatus.PREP_STARTED);
+        when(orderRepository.findById(1006L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderService.markShipped(1006L);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+        verify(outboxService, never()).enqueue(any(), any());
+    }
+
     private Order sampleOrder(Long orderId, Long customerId) {
         Order order = Order.builder()
             .id(orderId)

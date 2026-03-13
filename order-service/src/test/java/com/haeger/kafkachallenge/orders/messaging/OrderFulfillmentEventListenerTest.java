@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.haeger.kafkachallenge.common.events.EventTypes;
 import com.haeger.kafkachallenge.common.events.IntegrationEvent;
+import com.haeger.kafkachallenge.common.events.OrderCreatedPayload;
 import com.haeger.kafkachallenge.common.events.OrderFulfillmentCheckResultPayload;
 import com.haeger.kafkachallenge.orders.service.OrderService;
 import com.haeger.kafkachallenge.orders.service.ProcessedEventService;
@@ -83,6 +84,52 @@ class OrderFulfillmentEventListenerTest {
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService).declineOrder(1002L);
+        verify(processedEventService).markProcessed(any());
+    }
+
+    @Test
+    void shipmentPreparationStartedEventUpdatesOrderStatus() throws Exception {
+        String message = objectMapper.writeValueAsString(IntegrationEvent.of(
+            EventTypes.SHIPMENT_PREPARATION_STARTED,
+            "1003",
+            OrderCreatedPayload.builder()
+                .orderId(1003L)
+                .customerId(42L)
+                .customerEmail("max@example.com")
+                .customerFullName("Max Mustermann")
+                .items(List.of())
+                .build()
+        ));
+        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
+        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
+        doNothing().when(processedEventService).markProcessed(any());
+
+        orderFulfillmentEventListener.onOrderEvent(message);
+
+        verify(orderService).startShipmentPreparation(1003L);
+        verify(processedEventService).markProcessed(any());
+    }
+
+    @Test
+    void orderShippedEventUpdatesOrderStatus() throws Exception {
+        String message = objectMapper.writeValueAsString(IntegrationEvent.of(
+            EventTypes.ORDER_SHIPPED,
+            "1004",
+            OrderCreatedPayload.builder()
+                .orderId(1004L)
+                .customerId(42L)
+                .customerEmail("max@example.com")
+                .customerFullName("Max Mustermann")
+                .items(List.of())
+                .build()
+        ));
+        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
+        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
+        doNothing().when(processedEventService).markProcessed(any());
+
+        orderFulfillmentEventListener.onOrderEvent(message);
+
+        verify(orderService).markShipped(1004L);
         verify(processedEventService).markProcessed(any());
     }
 
