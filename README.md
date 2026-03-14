@@ -16,38 +16,26 @@ microservices. The repository contains several services plus shared code in the
 - Spring Boot
 - Spring Kafka
 - Maven
-- Docker Compose (local Kafka)
+- Docker Compose
 
 ## Getting started
 Prerequisites:
 - Java 21
 - Maven
-- Docker (optional, for local Kafka)
+- Docker (optional, for the local stack)
 
 Build all modules:
 ```bash
 mvn clean package
 ```
 
-Start local Kafka (optional):
+Start the full local stack (optional):
 ```bash
-docker compose up -d
+docker compose --profile full up -d
 ```
 
-Docker Compose (infra profile):
-- Start existing containers/networks/volumes:
-```bash
-docker compose --profile infra start
-```
-- Stop containers (keeps networks/volumes):
-```bash
-docker compose --profile infra stop
-```
-- Recreate containers and networks, keep topics/data:
-```bash
-docker compose --profile infra down
-docker compose --profile infra up -d
-```
+Docker Compose reference:
+- See [documentation/docker-compose-reference.md](documentation/docker-compose-reference.md) for profiles, ports, URLs, database access, and common Docker commands.
 
 Run a service:
 ```bash

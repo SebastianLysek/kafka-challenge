@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   infra-net:
     name: kafka-infra-net
@@ -7,6 +5,7 @@ networks:
 
 volumes:
   kafka_data:
+  mysql_data:
 
 services:
   kafka:
@@ -14,11 +13,9 @@ services:
     container_name: kafka
     profiles: ["infra", "full"]
     networks: [infra-net]
-
     ports:
-      - "9092:9092"     # HOST access (IntelliJ): localhost:9092
-      - "29092:29092"   # DOCKER access (other containers): kafka:29092
-
+      - "9092:9092"
+      - "29092:29092"
     environment:
       # -------- KRaft "combined mode" (broker + controller in one node) --------
       KAFKA_NODE_ID: "1"
@@ -40,21 +37,14 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-
     volumes:
       - kafka_data:/var/lib/kafka/data
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    profiles: ["infra", "full"]
-    networks: [infra-net]
-    depends_on: [kafka]
-    ports:
-      - "8085:8080"
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   mailhog:
     image: mailhog/mailhog:latest
@@ -64,74 +54,155 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8025/ || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 10s
 
-  # ---------------- FULL profile: run services in Docker ----------------
+  mysql:
+    image: mysql:8.4
+    container_name: mysql
+    profiles: ["full"]
+    networks: [infra-net]
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
-  orders:
+  order-service:
     profiles: ["full"]
     build:
-      context: ./orders
-    image: orders:dev
-    container_name: orders
-    networks:
-      - infra-net
+      context: .
+      dockerfile: order-service/Dockerfile
+    image: order-service:dev
+    container_name: order-service
+    networks: [infra-net]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     ports:
       - "8081:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
 
-  inventory:
+  inventory-service:
     profiles: ["full"]
     build:
-      context: ./inventory
-    image: inventory:dev
-    container_name: inventory
-    networks:
-      - infra-net
+      context: .
+      dockerfile: inventory-service/Dockerfile
+    image: inventory-service:dev
+    container_name: inventory-service
+    networks: [infra-net]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
     ports:
       - "8082:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
 
-  shipment:
+  shipment-service:
     profiles: ["full"]
     build:
-      context: ./shipment
-    image: shipment:dev
-    container_name: shipment
-    networks:
-      - infra-net
+      context: .
+      dockerfile: shipment-service/Dockerfile
+    image: shipment-service:dev
+    container_name: shipment-service
+    networks: [infra-net]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
     ports:
       - "8083:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
 
-  customer-relations:
+  customer-relations-service:
     profiles: ["full"]
     build:
-      context: ./customer-relations
-    image: customer-relations:dev
-    container_name: customer-relations
-    networks:
-      - infra-net
+      context: .
+      dockerfile: customer-relations-service/Dockerfile
+    image: customer-relations-service:dev
+    container_name: customer-relations-service
+    networks: [infra-net]
     depends_on:
-      - kafka
-      - mailhog
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      shipment-service:
+        condition: service_healthy
     ports:
       - "8084:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SPRING_MAIL_HOST=mailhog
-      - SPRING_MAIL_PORT=1025
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    profiles: ["infra", "full"]
+    networks: [infra-net]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
