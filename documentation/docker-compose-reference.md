@@ -85,6 +85,20 @@ Useful after code changes that should be reflected in the containers.
 docker compose --profile full up -d --build
 ```
 
+### Run The Isolated E2E Stack
+
+Starts the test stack under a separate Compose project with alternate host ports so it can run alongside the default local stack.
+
+```bash
+docker compose -p kafka-challenge-e2e -f docker-compose.yaml -f docker-compose.e2e.yaml --profile full up -d --build
+```
+
+Stop and remove that isolated stack:
+
+```bash
+docker compose -p kafka-challenge-e2e -f docker-compose.yaml -f docker-compose.e2e.yaml --profile full down --volumes --rmi local --remove-orphans
+```
+
 ### Stop Containers
 
 Stops the containers but keeps networks and volumes.

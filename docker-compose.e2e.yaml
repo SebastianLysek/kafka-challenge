@@ -1,0 +1,34 @@
+services:
+  kafka:
+    ports:
+      - "19092:9092"
+      - "39092:29092"
+
+  mailhog:
+    ports:
+      - "11025:1025"
+      - "18025:8025"
+
+  mysql:
+    ports:
+      - "13307:3306"
+
+  order-service:
+    ports:
+      - "18081:8080"
+
+  inventory-service:
+    ports:
+      - "18082:8080"
+
+  shipment-service:
+    ports:
+      - "18083:8080"
+
+  customer-relations-service:
+    ports:
+      - "18084:8080"
+
+  kafka-ui:
+    ports:
+      - "18085:8080"

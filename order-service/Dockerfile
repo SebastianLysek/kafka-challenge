@@ -8,6 +8,7 @@ COPY order-service/pom.xml order-service/pom.xml
 COPY inventory-service/pom.xml inventory-service/pom.xml
 COPY shipment-service/pom.xml shipment-service/pom.xml
 COPY customer-relations-service/pom.xml customer-relations-service/pom.xml
+COPY e2e-tests/pom.xml e2e-tests/pom.xml
 
 RUN chmod +x mvnw && ./mvnw -pl order-service -am dependency:go-offline
 

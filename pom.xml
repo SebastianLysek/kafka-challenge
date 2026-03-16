@@ -27,6 +27,11 @@
     <h2.version>2.3.232</h2.version>
     <lombok.version>1.18.42</lombok.version>
     <mockito.version>5.17.0</mockito.version>
+    <awaitility.version>4.2.2</awaitility.version>
+    <rest-assured.version>5.5.0</rest-assured.version>
+    <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
+    <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
+    <skipE2eTests>true</skipE2eTests>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -36,6 +41,7 @@
     <module>inventory-service</module>
     <module>shipment-service</module>
     <module>customer-relations-service</module>
+    <module>e2e-tests</module>
   </modules>
 
   <!-- Optional: centralize plugin versions/config (children still add the plugin) -->
@@ -47,8 +53,27 @@
           <artifactId>spring-boot-maven-plugin</artifactId>
           <version>${spring-boot.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${maven-failsafe-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>${exec-maven-plugin.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
+
+  <profiles>
+    <profile>
+      <id>e2e</id>
+      <properties>
+        <skipE2eTests>false</skipE2eTests>
+      </properties>
+    </profile>
+  </profiles>
 
 </project>

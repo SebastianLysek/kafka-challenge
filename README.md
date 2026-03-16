@@ -10,6 +10,7 @@ microservices. The repository contains several services plus shared code in the
 - `inventory-service` inventory domain service
 - `shipment-service` shipment domain service
 - `customer-relations-service` customer relations domain service
+- `e2e-tests` black-box end-to-end suite for the Docker Compose stack
 
 ## Tech stack
 - Java 21
@@ -26,7 +27,7 @@ Prerequisites:
 
 Build all modules:
 ```bash
-mvn clean package
+./mvnw clean package
 ```
 
 Start the full local stack (optional):
@@ -39,16 +40,23 @@ Docker Compose reference:
 
 Run a service:
 ```bash
-mvn -pl order-service spring-boot:run
+./mvnw -pl order-service spring-boot:run
 ```
 
 ## Tests
 Run all tests:
 ```bash
-mvn test
+./mvnw test
 ```
 
 Run a single module's tests:
 ```bash
-mvn -pl order-service test
+./mvnw -pl order-service test
 ```
+
+Run the end-to-end suite against Docker Compose:
+```bash
+./mvnw -pl e2e-tests -am -Pe2e verify
+```
+
+The E2E suite uses its own Compose project and alternate host ports, so it does not take over or tear down the local stack.
