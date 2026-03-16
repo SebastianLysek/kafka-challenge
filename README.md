@@ -60,3 +60,6 @@ Run the end-to-end suite against Docker Compose:
 ```
 
 The E2E suite uses its own Compose project and alternate host ports, so it does not take over or tear down the local stack.
+
+## Known issues
+- The compose file relies on several Linux scripts which may fail because of Windows line endings. To fix this set ```git config --global core.autocrlf false``` and fetch the repo again.
