@@ -36,7 +36,7 @@ public class OrderEventListener {
             if (event.getEventId() == null || event.getEventId().isBlank()) {
                 throw new IllegalArgumentException("Order event is missing eventId");
             }
-            if (processedEventService.hasProcessed(event.getEventId())) {
+            if (!processedEventService.claimEvent(event)) {
                 LOG.info("Skipping duplicate {} event {}", event.getType(), event.getEventId());
                 return;
             }
@@ -49,8 +49,6 @@ public class OrderEventListener {
                      EventTypes.ORDER_SHIPPED -> handleOrderStatusUpdate(event.getType(), event.getPayload());
                 default -> LOG.debug("Ignoring unsupported order event type {}", event.getType());
             }
-
-            processedEventService.markProcessed(event);
         } catch (JsonProcessingException ex) {
             throw new IllegalArgumentException("Failed to deserialize order event", ex);
         }

@@ -2,7 +2,6 @@ package com.haeger.kafkachallenge.orders.messaging;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,14 +55,12 @@ class OrderFulfillmentEventListenerTest {
                 .items(List.of())
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService).confirmOrder(1001L);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -77,14 +74,12 @@ class OrderFulfillmentEventListenerTest {
                 .items(List.of())
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService).declineOrder(1002L);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -100,14 +95,12 @@ class OrderFulfillmentEventListenerTest {
                 .items(List.of())
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService).startShipmentPreparation(1003L);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -123,14 +116,12 @@ class OrderFulfillmentEventListenerTest {
                 .items(List.of())
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService).markShipped(1004L);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -143,13 +134,12 @@ class OrderFulfillmentEventListenerTest {
                 .items(List.of())
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(true);
+        when(processedEventService.claimEvent(any())).thenReturn(false);
 
         orderFulfillmentEventListener.onOrderEvent(message);
 
         verify(orderService, never()).confirmOrder(anyLong());
         verify(orderService, never()).declineOrder(anyLong());
-        verify(processedEventService, never()).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 }

@@ -1,7 +1,6 @@
 package com.haeger.kafkachallenge.inventory.messaging;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,14 +56,12 @@ class OrderEventListenerTest {
             "1001",
             order
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderEventListener.onOrderEvent(message);
 
         verify(orderFulfillmentService).handleOrderCreated(order);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -79,12 +76,11 @@ class OrderEventListenerTest {
                 ))
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(true);
+        when(processedEventService.claimEvent(any())).thenReturn(false);
 
         orderEventListener.onOrderEvent(message);
 
         verify(orderFulfillmentService, never()).handleOrderCreated(any());
-        verify(processedEventService, never()).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 }

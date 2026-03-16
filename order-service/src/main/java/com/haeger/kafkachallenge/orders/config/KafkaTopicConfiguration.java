@@ -14,7 +14,7 @@ public class KafkaTopicConfiguration {
     public KafkaAdmin.NewTopics kafkaTopics() {
         return new KafkaAdmin.NewTopics(
             topic(KafkaTopics.PRODUCT_CATALOG, 1, (short) 1),
-            topic(KafkaTopics.ORDERS, 1, (short) 1)
+            topic(KafkaTopics.ORDERS, 4, (short) 1)
         );
     }
 

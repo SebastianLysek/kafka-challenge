@@ -1,7 +1,6 @@
 package com.haeger.kafkachallenge.orders.messaging;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,14 +61,12 @@ class ProductCatalogEventListenerTest {
                 .products(List.of(product))
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         productCatalogEventListener.onCatalogEvent(message);
 
         verify(productCatalogProjectionService).replaceCatalog(List.of(product));
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
         verify(productCatalogProjectionService, never()).upsertProduct(any());
     }
 
@@ -88,14 +85,12 @@ class ProductCatalogEventListenerTest {
                 .product(product)
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         productCatalogEventListener.onCatalogEvent(message);
 
         verify(productCatalogProjectionService).upsertProduct(product);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
         verify(productCatalogProjectionService, never()).replaceCatalog(any());
     }
 
@@ -114,13 +109,12 @@ class ProductCatalogEventListenerTest {
                 .product(product)
                 .build()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(true);
+        when(processedEventService.claimEvent(any())).thenReturn(false);
 
         productCatalogEventListener.onCatalogEvent(message);
 
         verify(productCatalogProjectionService, never()).replaceCatalog(any());
         verify(productCatalogProjectionService, never()).upsertProduct(any());
-        verify(processedEventService, never()).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 }

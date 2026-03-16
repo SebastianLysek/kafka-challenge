@@ -2,7 +2,6 @@ package com.haeger.kafkachallenge.customerrelations.messaging;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,15 +56,12 @@ class OrderEventListenerTest {
     void supportedEventsSendNotification(String eventType) throws Exception {
         OrderCreatedPayload order = sampleOrder();
         String message = objectMapper.writeValueAsString(IntegrationEvent.of(eventType, "1001", order));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(false);
-        doNothing().when(processedEventService).markProcessed(any());
+        when(processedEventService.claimEvent(any())).thenReturn(true);
 
         orderEventListener.onOrderEvent(message);
 
         verify(customerNotificationService).sendOrderStatusUpdate(eventType, order);
-        verify(processedEventService).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     @Test
@@ -75,13 +71,12 @@ class OrderEventListenerTest {
             "1001",
             sampleOrder()
         ));
-        IntegrationEvent<?> event = objectMapper.readValue(message, IntegrationEvent.class);
-        when(processedEventService.hasProcessed(event.getEventId())).thenReturn(true);
+        when(processedEventService.claimEvent(any())).thenReturn(false);
 
         orderEventListener.onOrderEvent(message);
 
         verify(customerNotificationService, never()).sendOrderStatusUpdate(anyString(), any());
-        verify(processedEventService, never()).markProcessed(any());
+        verify(processedEventService).claimEvent(any());
     }
 
     private static Stream<Arguments> supportedEventTypes() {

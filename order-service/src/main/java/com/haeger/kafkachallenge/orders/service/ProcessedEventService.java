@@ -1,30 +1,36 @@
 package com.haeger.kafkachallenge.orders.service;
 
 import com.haeger.kafkachallenge.common.events.IntegrationEvent;
-import com.haeger.kafkachallenge.orders.entity.ProcessedEvent;
-import com.haeger.kafkachallenge.orders.repository.ProcessedEventRepository;
+import java.sql.Timestamp;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class ProcessedEventService {
-    private final ProcessedEventRepository processedEventRepository;
+    private static final String CLAIM_SQL = """
+        insert into processed_events (event_id, event_type, reference_id, processed_at)
+        values (?, ?, ?, ?)
+        """;
 
-    @Transactional(readOnly = true)
-    public boolean hasProcessed(String eventId) {
-        return processedEventRepository.existsById(eventId);
-    }
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
-    public void markProcessed(IntegrationEvent<?> event) {
-        processedEventRepository.save(ProcessedEvent.builder()
-            .eventId(event.getEventId())
-            .eventType(event.getType())
-            .referenceId(event.getReferenceId())
-            .processedAt(Instant.now())
-            .build());
+    public boolean claimEvent(IntegrationEvent<?> event) {
+        try {
+            return jdbcTemplate.update(
+                CLAIM_SQL,
+                event.getEventId(),
+                event.getType(),
+                event.getReferenceId(),
+                Timestamp.from(Instant.now())
+            ) == 1;
+        } catch (DataIntegrityViolationException ex) {
+            return false;
+        }
     }
 }
