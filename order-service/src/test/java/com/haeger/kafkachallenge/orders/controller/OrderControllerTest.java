@@ -25,6 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest({OrderController.class, CustomerOrderController.class})
 class OrderControllerTest {
+    private static final String TOO_LONG_256 = "x".repeat(256);
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -82,6 +84,24 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.id").value(1001))
             .andExpect(jsonPath("$.status").value("CREATED"))
             .andExpect(jsonPath("$.items[0].productSku").value("CPU-AMD-7800X3D"));
+    }
+
+    @Test
+    void createOrderRejectsPayloadThatExceedsEntityColumnLengths() throws Exception {
+        mockMvc.perform(post("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(java.util.Map.of(
+                    "customerId", 42,
+                    "customerEmail", TOO_LONG_256 + "@example.com",
+                    "customerFullName", TOO_LONG_256,
+                    "currency", "EURO",
+                    "notes", "ok",
+                    "items", List.of(java.util.Map.of(
+                        "productId", 10,
+                        "quantity", 1
+                    ))
+                ))))
+            .andExpect(status().isBadRequest());
     }
 
     @Test
