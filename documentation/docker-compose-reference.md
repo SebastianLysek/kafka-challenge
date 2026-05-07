@@ -4,19 +4,22 @@
 
 - `infra`: Kafka, MailHog, Kafka UI
 - `full`: Everything in `infra` plus MySQL and all Spring services
+- `streaming`: Kafka, MailHog, MySQL, Kafka UI, and the single streaming-service lab
 
 ## Services And Ports
 
 | Service | Profile | Host Port(s) | Container Port(s) | Notes |
 |---|---|---:|---:|---|
-| Kafka | `infra`, `full` | `9092`, `29092` | `9092`, `29092` | `9092` is the host-facing listener, `29092` is used by other containers |
-| MailHog | `infra`, `full` | `1025`, `8025` | `1025`, `8025` | SMTP on `1025`, web UI on `8025` |
-| MySQL | `full` | `3307` | `3306` | Host port changed to `3307` to avoid conflicts with local MySQL |
+| Kafka | `infra`, `full`, `streaming` | `9092`, `29092` | `9092`, `29092` | `9092` is the host-facing listener, `29092` is used by other containers |
+| MailHog | `infra`, `full`, `streaming` | `1025`, `8025` | `1025`, `8025` | SMTP on `1025`, web UI on `8025` |
+| MySQL | `full`, `streaming` | `3307` | `3306` | Host port changed to `3307` to avoid conflicts with local MySQL |
+| Streaming MySQL Init | `streaming` | n/a | n/a | One-shot schema/grant repair for existing MySQL volumes |
 | Order Service | `full` | `8081` | `8080` | Spring profile `docker` |
 | Inventory Service | `full` | `8082` | `8080` | Spring profile `docker` |
 | Shipment Service | `full` | `8083` | `8080` | Spring profile `docker` |
 | Customer Relations Service | `full` | `8084` | `8080` | Spring profile `docker` |
-| Kafka UI | `infra`, `full` | `8085` | `8080` | Kafka browser UI |
+| Streaming Service | `streaming` | `8090` | `8080` | Single-service Kafka Streams lab, Spring profile `docker` |
+| Kafka UI | `infra`, `full`, `streaming` | `8085` | `8080` | Kafka browser UI |
 
 ## Useful URLs
 
@@ -43,6 +46,10 @@
 - Customer Relations Service OpenAPI: [http://localhost:8084/api-docs](http://localhost:8084/api-docs)
 - Customer Relations Service Health: [http://localhost:8084/actuator/health](http://localhost:8084/actuator/health)
 
+- Streaming Service Swagger UI: [http://localhost:8090/swagger-ui.html](http://localhost:8090/swagger-ui.html)
+- Streaming Service OpenAPI: [http://localhost:8090/api-docs](http://localhost:8090/api-docs)
+- Streaming Service Health: [http://localhost:8090/actuator/health](http://localhost:8090/actuator/health)
+
 ## Database Access
 
 Use these settings for tools such as DataGrip:
@@ -58,6 +65,7 @@ Available schemas:
 - `inventory_service`
 - `shipment_service`
 - `customer_relations_service`
+- `streaming_service`
 
 ## Useful Docker Compose Commands
 
@@ -83,6 +91,14 @@ Useful after code changes that should be reflected in the containers.
 
 ```bash
 docker compose --profile full up -d --build
+```
+
+### Start Streaming Lab Stack
+
+Starts Kafka, MailHog, MySQL, Kafka UI, and the single streaming-service lab.
+
+```bash
+docker compose --profile streaming up -d --build
 ```
 
 ### Run The Isolated E2E Stack

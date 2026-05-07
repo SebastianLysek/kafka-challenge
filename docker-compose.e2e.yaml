@@ -9,6 +9,10 @@ services:
       - "11025:1025"
       - "18025:8025"
 
+  schema-registry:
+    ports:
+      - "18086:8081"
+
   mysql:
     ports:
       - "13307:3306"

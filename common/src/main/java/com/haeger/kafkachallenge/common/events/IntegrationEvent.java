@@ -23,12 +23,12 @@ public class IntegrationEvent<T> {
     }
 
     public static <T> IntegrationEvent<T> of(String type, String referenceId, T payload) {
-        return IntegrationEvent.<T>builder()
-            .eventId(UUID.randomUUID().toString())
-            .type(type)
-            .referenceId(referenceId)
-            .occurredAt(Instant.now())
-            .payload(payload)
-            .build();
+        IntegrationEvent<T> event = new IntegrationEvent<>();
+        event.eventId = UUID.randomUUID().toString();
+        event.type = type;
+        event.referenceId = referenceId;
+        event.occurredAt = Instant.now();
+        event.payload = payload;
+        return event;
     }
 }

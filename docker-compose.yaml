@@ -9,7 +9,7 @@ volumes:
 services:
   kafka:
     image: apache/kafka:4.2.0
-    profiles: ["infra", "full"]
+    profiles: ["infra", "full", "streaming"]
     networks: [infra-net]
     ports:
       - "9092:9092"
@@ -46,7 +46,7 @@ services:
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
-    profiles: ["infra", "full"]
+    profiles: ["infra", "full", "streaming"]
     networks: [infra-net]
     ports:
       - "1025:1025"
@@ -58,9 +58,29 @@ services:
       retries: 12
       start_period: 10s
 
+  schema-registry:
+    image: confluentinc/cp-schema-registry:8.2.0
+    profiles: ["infra", "full", "streaming"]
+    networks: [infra-net]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8086:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/subjects >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   mysql:
     image: mysql:8.4
-    profiles: ["full"]
+    profiles: ["full", "streaming"]
     networks: [infra-net]
     ports:
       - "3307:3306"
@@ -76,6 +96,28 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  streaming-mysql-init:
+    image: mysql:8.4
+    profiles: ["streaming"]
+    networks: [infra-net]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    command:
+      - sh
+      - -c
+      - |
+        mysql --protocol tcp -h mysql -uroot -p"$${MYSQL_ROOT_PASSWORD}" <<'SQL'
+        CREATE DATABASE IF NOT EXISTS streaming_service
+            CHARACTER SET utf8mb4
+            COLLATE utf8mb4_unicode_ci;
+        CREATE USER IF NOT EXISTS 'kafka_challenge'@'%' IDENTIFIED BY 'kafka_challenge';
+        GRANT ALL PRIVILEGES ON streaming_service.* TO 'kafka_challenge'@'%';
+        FLUSH PRIVILEGES;
+        SQL
 
   order-service:
     profiles: ["full"]
@@ -181,7 +223,7 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
-    profiles: ["infra", "full"]
+    profiles: ["infra", "full", "streaming"]
     networks: [infra-net]
     depends_on:
       kafka:
@@ -191,9 +233,37 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  streaming-service:
+    profiles: ["streaming"]
+    build:
+      context: .
+      dockerfile: streaming-service/Dockerfile
+    image: streaming-service:dev
+    networks: [infra-net]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      streaming-mysql-init:
+        condition: service_completed_successfully
+    ports:
+      - "8090:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s

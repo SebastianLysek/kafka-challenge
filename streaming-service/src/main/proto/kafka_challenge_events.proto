@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package kafka.challenge;
+
+option java_package = "com.haeger.kafkachallenge.streaming.proto";
+option java_multiple_files = true;
+
+message ProductUpserted {
+  int64 inventory_item_id = 1;
+  int64 product_id = 2;
+  string sku = 3;
+  string name = 4;
+  string currency = 5;
+  string price = 6;
+  int32 quantity = 7;
+}
+
+message OrderCreated {
+  int64 order_id = 1;
+  int64 customer_id = 2;
+  string customer_email = 3;
+  string customer_full_name = 4;
+  string currency = 5;
+  string notes = 6;
+  repeated OrderCreatedItem items = 7;
+}
+
+message OrderCreatedItem {
+  int64 product_id = 1;
+  int32 quantity = 2;
+}
+
+message OrderStatusChanged {
+  int64 order_id = 1;
+  int64 customer_id = 2;
+  string customer_email = 3;
+  string customer_full_name = 4;
+  string status = 5;
+  string reason = 6;
+}
+
+message ShipmentPreparationStarted {
+  int64 shipment_id = 1;
+  int64 order_id = 2;
+  int64 customer_id = 3;
+  string customer_email = 4;
+  string customer_full_name = 5;
+}
+
+message ShipmentCompleted {
+  int64 shipment_id = 1;
+  int64 order_id = 2;
+}
+
+message NotificationRequested {
+  int64 order_id = 1;
+  int64 customer_id = 2;
+  string customer_email = 3;
+  string customer_full_name = 4;
+  string order_status = 5;
+}
