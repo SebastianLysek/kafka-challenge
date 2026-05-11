@@ -58,4 +58,5 @@ message NotificationRequested {
   string customer_email = 3;
   string customer_full_name = 4;
   string order_status = 5;
+  string additional_information = 6;
 }

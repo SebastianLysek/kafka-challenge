@@ -1,38 +1,61 @@
 package com.haeger.kafkachallenge.streaming.streams.serde;
 
+import com.google.protobuf.Message;
 import com.haeger.kafkachallenge.streaming.proto.NotificationRequested;
 import com.haeger.kafkachallenge.streaming.proto.OrderCreated;
 import com.haeger.kafkachallenge.streaming.proto.OrderStatusChanged;
 import com.haeger.kafkachallenge.streaming.proto.ProductUpserted;
 import com.haeger.kafkachallenge.streaming.proto.ShipmentCompleted;
 import com.haeger.kafkachallenge.streaming.proto.ShipmentPreparationStarted;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializerConfig;
+import io.confluent.kafka.streams.serdes.protobuf.KafkaProtobufSerde;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.common.serialization.Serde;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-public final class ProtoSerdes {
-    private ProtoSerdes() {
+@Component
+public class ProtoSerdes {
+    private final String schemaRegistryUrl;
+
+    public ProtoSerdes(
+        @Value("${spring.kafka.properties.schema.registry.url:mock://streaming-service}") String schemaRegistryUrl
+    ) {
+        this.schemaRegistryUrl = schemaRegistryUrl;
     }
 
-    public static Serde<ProductUpserted> productUpserted() {
-        return new ProtobufSerde<>(ProductUpserted::parseFrom);
+    public Serde<ProductUpserted> productUpserted() {
+        return protobufSerde(ProductUpserted.class);
     }
 
-    public static Serde<OrderCreated> orderCreated() {
-        return new ProtobufSerde<>(OrderCreated::parseFrom);
+    public Serde<OrderCreated> orderCreated() {
+        return protobufSerde(OrderCreated.class);
     }
 
-    public static Serde<OrderStatusChanged> orderStatusChanged() {
-        return new ProtobufSerde<>(OrderStatusChanged::parseFrom);
+    public Serde<OrderStatusChanged> orderStatusChanged() {
+        return protobufSerde(OrderStatusChanged.class);
     }
 
-    public static Serde<ShipmentPreparationStarted> shipmentPreparationStarted() {
-        return new ProtobufSerde<>(ShipmentPreparationStarted::parseFrom);
+    public Serde<ShipmentPreparationStarted> shipmentPreparationStarted() {
+        return protobufSerde(ShipmentPreparationStarted.class);
     }
 
-    public static Serde<ShipmentCompleted> shipmentCompleted() {
-        return new ProtobufSerde<>(ShipmentCompleted::parseFrom);
+    public Serde<ShipmentCompleted> shipmentCompleted() {
+        return protobufSerde(ShipmentCompleted.class);
     }
 
-    public static Serde<NotificationRequested> notificationRequested() {
-        return new ProtobufSerde<>(NotificationRequested::parseFrom);
+    public Serde<NotificationRequested> notificationRequested() {
+        return protobufSerde(NotificationRequested.class);
+    }
+
+    private <T extends Message> Serde<T> protobufSerde(Class<T> valueType) {
+        KafkaProtobufSerde<T> serde = new KafkaProtobufSerde<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+        config.put(KafkaProtobufDeserializerConfig.SPECIFIC_PROTOBUF_VALUE_TYPE, valueType.getName());
+        serde.configure(config, false);
+        return serde;
     }
 }

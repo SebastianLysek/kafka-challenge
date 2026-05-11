@@ -11,8 +11,12 @@ import org.springframework.stereotype.Component;
 public class OrderEventListener {
     private final OrderService orderService;
 
-    @KafkaListener(topics = StreamingTopics.ORDER_STATUS_CHANGED, groupId = "streaming-service-order-projection")
-    public void onOrderStatusChanged(byte[] payload) throws Exception {
-        orderService.applyStatusChanged(OrderStatusChanged.parseFrom(payload));
+    @KafkaListener(
+        topics = StreamingTopics.ORDER_STATUS_CHANGED,
+        groupId = "streaming-service-order-projection",
+        containerFactory = "orderStatusChangedKafkaListenerContainerFactory"
+    )
+    public void onOrderStatusChanged(OrderStatusChanged event) {
+        orderService.applyStatusChanged(event);
     }
 }

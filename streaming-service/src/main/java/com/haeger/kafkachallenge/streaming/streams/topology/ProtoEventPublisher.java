@@ -1,6 +1,6 @@
 package com.haeger.kafkachallenge.streaming.streams.topology;
 
-import com.google.protobuf.MessageLite;
+import com.google.protobuf.Message;
 import com.haeger.kafkachallenge.streaming.proto.NotificationRequested;
 import com.haeger.kafkachallenge.streaming.proto.OrderCreated;
 import com.haeger.kafkachallenge.streaming.proto.OrderStatusChanged;
@@ -16,7 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 @RequiredArgsConstructor
 public class ProtoEventPublisher {
-    private final KafkaTemplate<String, byte[]> kafkaTemplate;
+    private final KafkaTemplate<Object, Object> kafkaTemplate;
 
     public void publishProductUpserted(ProductUpserted event) {
         publish(StreamingTopics.PRODUCT_UPSERTED, Long.toString(event.getProductId()), event);
@@ -42,17 +42,16 @@ public class ProtoEventPublisher {
         publish(StreamingTopics.NOTIFICATION_REQUESTED, Long.toString(event.getOrderId()), event);
     }
 
-    private void publish(String topic, String key, MessageLite event) {
-        byte[] payload = event.toByteArray();
+    private void publish(String topic, String key, Message event) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    kafkaTemplate.send(topic, key, payload);
+                    kafkaTemplate.send(topic, key, event);
                 }
             });
             return;
         }
-        kafkaTemplate.send(topic, key, payload);
+        kafkaTemplate.send(topic, key, event);
     }
 }

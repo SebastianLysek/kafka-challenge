@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.haeger.kafkachallenge.streaming.proto.ProductUpserted;
 import org.junit.jupiter.api.Test;
 
-class ProtobufSerdeTest {
+class ProtoSerdesTest {
     @Test
-    void roundTripsMessage() {
+    void roundTripsMessageThroughConfluentProtobufSerde() {
         ProductUpserted original = ProductUpserted.newBuilder()
             .setInventoryItemId(1)
             .setProductId(10)
@@ -18,10 +18,10 @@ class ProtobufSerdeTest {
             .setQuantity(10)
             .build();
 
-        ProtobufSerde<ProductUpserted> serde = new ProtobufSerde<>(ProductUpserted::parseFrom);
+        ProtoSerdes protoSerdes = new ProtoSerdes("mock://proto-serdes-test");
 
-        byte[] bytes = serde.serializer().serialize("test", original);
-        ProductUpserted restored = serde.deserializer().deserialize("test", bytes);
+        byte[] bytes = protoSerdes.productUpserted().serializer().serialize("test", original);
+        ProductUpserted restored = protoSerdes.productUpserted().deserializer().deserialize("test", bytes);
 
         assertThat(restored).isEqualTo(original);
     }

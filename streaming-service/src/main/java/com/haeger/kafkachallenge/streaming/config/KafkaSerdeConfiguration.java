@@ -13,33 +13,39 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class KafkaSerdeConfiguration {
+    private final ProtoSerdes protoSerdes;
+
+    public KafkaSerdeConfiguration(ProtoSerdes protoSerdes) {
+        this.protoSerdes = protoSerdes;
+    }
+
     @Bean
     Serde<ProductUpserted> productUpsertedSerde() {
-        return ProtoSerdes.productUpserted();
+        return protoSerdes.productUpserted();
     }
 
     @Bean
     Serde<OrderCreated> orderCreatedSerde() {
-        return ProtoSerdes.orderCreated();
+        return protoSerdes.orderCreated();
     }
 
     @Bean
     Serde<OrderStatusChanged> orderStatusChangedSerde() {
-        return ProtoSerdes.orderStatusChanged();
+        return protoSerdes.orderStatusChanged();
     }
 
     @Bean
     Serde<ShipmentPreparationStarted> shipmentPreparationStartedSerde() {
-        return ProtoSerdes.shipmentPreparationStarted();
+        return protoSerdes.shipmentPreparationStarted();
     }
 
     @Bean
     Serde<ShipmentCompleted> shipmentCompletedSerde() {
-        return ProtoSerdes.shipmentCompleted();
+        return protoSerdes.shipmentCompleted();
     }
 
     @Bean
     Serde<NotificationRequested> notificationRequestedSerde() {
-        return ProtoSerdes.notificationRequested();
+        return protoSerdes.notificationRequested();
     }
 }

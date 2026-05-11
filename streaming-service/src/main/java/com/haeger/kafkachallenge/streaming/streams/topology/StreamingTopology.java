@@ -25,20 +25,22 @@ import org.springframework.context.annotation.Configuration;
 @RequiredArgsConstructor
 public class StreamingTopology {
     private final InventoryReservationService inventoryReservationService;
+    private final ProtoSerdes protoSerdes;
 
     @Bean
     KStream<String, OrderCreated> streamingServiceTopology(StreamsBuilder builder) {
-        return buildTopology(builder, inventoryReservationService::reserve);
+        return buildTopology(builder, inventoryReservationService::reserve, protoSerdes);
     }
 
     public static KStream<String, OrderCreated> buildTopology(
         StreamsBuilder builder,
-        Consumer<OrderCreated> inventoryReservation
+        Consumer<OrderCreated> inventoryReservation,
+        ProtoSerdes protoSerdes
     ) {
-        Serde<ProductUpserted> productSerde = ProtoSerdes.productUpserted();
-        Serde<OrderCreated> orderCreatedSerde = ProtoSerdes.orderCreated();
-        Serde<OrderStatusChanged> orderStatusChangedSerde = ProtoSerdes.orderStatusChanged();
-        Serde<ShipmentCompleted> shipmentCompletedSerde = ProtoSerdes.shipmentCompleted();
+        Serde<ProductUpserted> productSerde = protoSerdes.productUpserted();
+        Serde<OrderCreated> orderCreatedSerde = protoSerdes.orderCreated();
+        Serde<OrderStatusChanged> orderStatusChangedSerde = protoSerdes.orderStatusChanged();
+        Serde<ShipmentCompleted> shipmentCompletedSerde = protoSerdes.shipmentCompleted();
 
         builder.table(
             StreamingTopics.PRODUCT_UPSERTED,

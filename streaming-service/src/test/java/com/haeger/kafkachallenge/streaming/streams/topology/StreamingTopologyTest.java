@@ -11,6 +11,7 @@ import com.haeger.kafkachallenge.streaming.streams.serde.ProtoSerdes;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
@@ -84,30 +85,34 @@ class StreamingTopologyTest {
 
         static DriverFixture open(java.util.function.Consumer<OrderCreated> reservation) {
             StreamsBuilder builder = new StreamsBuilder();
-            StreamingTopology.buildTopology(builder, reservation);
+            ProtoSerdes protoSerdes = new ProtoSerdes("mock://streaming-topology-test");
+            StreamingTopology.buildTopology(builder, reservation, protoSerdes);
 
             Properties properties = new Properties();
             properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "streaming-topology-test");
             properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:9092");
             properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
+            properties.put("schema.registry.url", "mock://streaming-topology-test");
 
             TopologyTestDriver driver = new TopologyTestDriver(builder.build(), properties);
+            Serializer<ProductUpserted> productSerializer = protoSerdes.productUpserted().serializer();
+            Serializer<OrderCreated> orderCreatedSerializer = protoSerdes.orderCreated().serializer();
             return new DriverFixture(
                 driver,
                 driver.createInputTopic(
                     StreamingTopics.PRODUCT_UPSERTED,
                     Serdes.String().serializer(),
-                    ProtoSerdes.productUpserted().serializer()
+                    productSerializer
                 ),
                 driver.createInputTopic(
                     StreamingTopics.ORDER_CREATED,
                     Serdes.String().serializer(),
-                    ProtoSerdes.orderCreated().serializer()
+                    orderCreatedSerializer
                 ),
                 driver.createOutputTopic(
                     StreamingTopics.ORDER_STATUS_CHANGED,
                     Serdes.String().deserializer(),
-                    ProtoSerdes.orderStatusChanged().deserializer()
+                    protoSerdes.orderStatusChanged().deserializer()
                 )
             );
         }

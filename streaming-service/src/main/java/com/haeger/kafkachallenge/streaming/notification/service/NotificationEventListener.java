@@ -11,8 +11,12 @@ import org.springframework.stereotype.Component;
 public class NotificationEventListener {
     private final CustomerNotificationService customerNotificationService;
 
-    @KafkaListener(topics = StreamingTopics.NOTIFICATION_REQUESTED, groupId = "streaming-service-notifications")
-    public void onNotificationRequested(byte[] payload) throws Exception {
-        customerNotificationService.sendOrderStatusUpdate(NotificationRequested.parseFrom(payload));
+    @KafkaListener(
+        topics = StreamingTopics.NOTIFICATION_REQUESTED,
+        groupId = "streaming-service-notifications",
+        containerFactory = "notificationRequestedKafkaListenerContainerFactory"
+    )
+    public void onNotificationRequested(NotificationRequested event) throws Exception {
+        customerNotificationService.sendOrderStatusUpdate(event);
     }
 }

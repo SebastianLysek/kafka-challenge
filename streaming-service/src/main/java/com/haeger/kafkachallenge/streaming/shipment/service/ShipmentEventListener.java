@@ -12,9 +12,12 @@ import org.springframework.stereotype.Component;
 public class ShipmentEventListener {
     private final OrderService orderService;
 
-    @KafkaListener(topics = StreamingTopics.SHIPMENT_PREPARATION_STARTED, groupId = "streaming-service-shipment-projection")
-    public void onShipmentPreparationStarted(byte[] payload) throws Exception {
-        ShipmentPreparationStarted event = ShipmentPreparationStarted.parseFrom(payload);
+    @KafkaListener(
+        topics = StreamingTopics.SHIPMENT_PREPARATION_STARTED,
+        groupId = "streaming-service-shipment-projection",
+        containerFactory = "shipmentPreparationStartedKafkaListenerContainerFactory"
+    )
+    public void onShipmentPreparationStarted(ShipmentPreparationStarted event) {
         orderService.markPreparationStarted(event.getOrderId());
     }
 }
